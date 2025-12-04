@@ -1,20 +1,36 @@
 const express = require('express')
 const cors = require('cors')
+const sequelize = require('./db/conn')
+
+// Models
+require('./models/User')
 
 const app = express()
 
+// Middleware JSON
 app.use(express.json())
-// Config JSON response
-app.use(express.json)
 
-// Solve CORS
+// CORS
+app.use(cors({
+  credentials: true,
+  origin: 'http://localhost:5000'
+}))
 
-app.use(cors({ credentials: true, origin: 'http://localhost:3000' }))
-
-// Public folder for images
+// Pasta pública
 app.use(express.static('public'))
 
-//Routes
+// Rotas
+const UserRoutes = require('./routes/UserRoutes')
+app.use('/users', UserRoutes)
 
+// Teste de conexão + sync
+sequelize.sync().then(() => {
+  console.log('📦 Banco sincronizado')
+}).catch(err => {
+  console.error('❌ Erro ao sincronizar banco:', err)
+})
 
-app.listen(5000)
+// Iniciar servidor
+app.listen(5000, () => {
+  console.log('🚀 Servidor rodando na porta 5000')
+})
