@@ -1,20 +1,30 @@
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
 const createUserToken = async (user, req, res) => {
+  try {
+    // cria o token com Sequelize (id correto)
+    const token = jwt.sign(
+      {
+        id: user.id,   // <-- AGORA CERTO
+        name: user.name
+      },
+      "nossosecret",
+      {
+        expiresIn: "7d"
+      }
+    );
 
-
-    //cria o token
-    const token = jwt.sign({
-        name: user.name,
-        id: user._id
-    }, "nossosecret")
-
-    //retorna o token
+    // retorna o token
     res.status(200).json({
-        message: 'Voce está autenticado',
-        token: token,
-        userId: user.id,
-    })
-}
+      message: "Você está autenticado",
+      token: token,
+      userId: user.id,  // <-- Sequelize usa id
+    });
 
-module.exports = createUserToken
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Erro ao gerar token" });
+  }
+};
+
+module.exports = createUserToken;

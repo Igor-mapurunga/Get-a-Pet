@@ -1,7 +1,10 @@
 const User = require('../models/User')
 const bcrypt = require('bcryptjs')
 const createUserToken = require('../helpers/create-user-token')
+const getToken = require('../helpers/get-token')
+console.log("DEBUG getToken:", getToken)
 
+const jwt = require('jsonwebtoken')
 module.exports = class UserController {
 
   static async register(req, res) {
@@ -46,26 +49,65 @@ module.exports = class UserController {
   }
 
   static async login(req, res) {
-  const { email, password } = req.body
+    const { email, password } = req.body
 
-  if (!email) return res.status(422).json({ message: 'O e-mail é obrigatório' })
-  if (!password) return res.status(422).json({ message: 'A senha é obrigatória' })
+    if (!email) return res.status(422).json({ message: 'O e-mail é obrigatório' })
+    if (!password) return res.status(422).json({ message: 'A senha é obrigatória' })
 
-  const user = await User.findOne({ where: { email } })
+    const user = await User.findOne({ where: { email } })
 
-  if (!user) {
-    return res.status(422).json({ message: 'Não existe usuario cadastrado com esse e-mail' })
+    if (!user) {
+      return res.status(422).json({ message: 'Não existe usuario cadastrado com esse e-mail' })
+    }
+
+    const checkPassword = await bcrypt.compare(password, user.password)
+
+    if (!checkPassword) {
+      res.status(401).json({ message: 'Email ou Senha invalidos' })
+      return
+    }
+
+
+    await createUserToken(user, req, res)
   }
 
-  const checkPassword = await bcrypt.compare(password, user.password)
+  static async checkUser(req, res) {
 
-  if (!checkPassword) {
-    return res.status(401).json({ message: 'Email ou Senha invalidos' })
+    console.log("AUTH HEADER RECEBIDO:", req.headers.authorization);
+
+    let currentUser
+
+    console.log(req.headers.authorization)
+
+    if (req.headers.authorization) {
+      const token = getToken(req)
+      const decoded = jwt.verify(token, 'nossosecret')
+
+      currentUser = await User.findByPk(decoded.id)
+
+     
+    } else {
+      currentUser = null
+    }
+
+    res.status(200).send(currentUser)
   }
 
-  
-  await createUserToken(user, req, res)
-}
-}
+  static async getUserById(req,res){
 
+    const id = req.params.id
+
+    const user = await User.findByPk(id)
+
+        if (!user) res.status(422).json({ message: 'O nome é obrigatório' })
+          
+
+        return res.status(200).json({user})
+  }
+
+  static async editUser(req,res){
+    res.status(200).json({message:'Deu certo o update!',})
+    return
+  }
+}
 
