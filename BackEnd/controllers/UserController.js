@@ -1,8 +1,10 @@
 const User = require('../models/User')
 const bcrypt = require('bcryptjs')
+
+//Import dos helpers
+const getUserByToken = require('../helpers/get-user-by-token')
 const createUserToken = require('../helpers/create-user-token')
 const getToken = require('../helpers/get-token')
-console.log("DEBUG getToken:", getToken)
 
 const jwt = require('jsonwebtoken')
 module.exports = class UserController {
@@ -85,7 +87,7 @@ module.exports = class UserController {
 
       currentUser = await User.findByPk(decoded.id)
 
-     
+
     } else {
       currentUser = null
     }
@@ -93,21 +95,84 @@ module.exports = class UserController {
     res.status(200).send(currentUser)
   }
 
-  static async getUserById(req,res){
+  static async getUserById(req, res) {
 
     const id = req.params.id
 
     const user = await User.findByPk(id)
 
-        if (!user) res.status(422).json({ message: 'O nome é obrigatório' })
-          
+    if (!user) res.status(422).json({ message: 'O nome é obrigatório' })
 
-        return res.status(200).json({user})
+
+    return res.status(200).json({ user })
   }
 
-  static async editUser(req,res){
-    res.status(200).json({message:'Deu certo o update!',})
-    return
+  static async editUser(req, res) {
+
+    const id = req.params.id;
+
+    const token = getToken(req)
+    const user = await getUserByToken(token)
+
+    const { name, email, phone, password, confirmpassword } = req.body
+
+    let image = ''
+
+    if(req.file){
+      user.image = req.file.filename
+    }
+
+    //validations
+    if (!name) return res.status(422).json({ message: 'O nome é obrigatório' })
+    if (!email) return res.status(422).json({ message: 'O email é obrigatório' })
+
+    //Check if email has already taken
+    const userExists = await User.findOne({ where: { email: email } })
+
+    if (user.email !== email && userExists) {
+      res.status(422).json({ message: 'Por favor, utilize outro e-mail!' })
+      return
+    }
+
+    user.email = email
+
+    if (!phone) return res.status(422).json({ message: 'O telefone é obrigatório' })
+    user.phone = phone
+
+    if (password != confirmpassword) {
+      res.status(422).json({ message: 'As senhas não conferem' })
+      return
+    } else if (password === confirmpassword && password != null) {
+      const salt = await bcrypt.genSalt(12)
+      const passwordHash = await bcrypt.hash(password, salt)
+
+      user.password = passwordHash
+      console.log(user)
+    }
+
+    try {
+
+      const userToUpdate = await User.findByPk(user.id)
+
+      if (!userToUpdate) {
+        return res.status(404).json({ message: "Usuário não encontrado" })
+      }
+
+      // Atualiza todos os campos que você já modificou no objeto `user`
+      Object.assign(userToUpdate, user)
+
+      await userToUpdate.save()
+
+      return res.status(200).json({
+        message: "Usuário alterado com sucesso",
+        user: userToUpdate
+      })
+
+    } catch (err) {
+      console.log(err)
+      return res.status(500).json({ message: "Erro ao atualizar usuário" })
+    }
+
   }
 }
 
