@@ -2,8 +2,8 @@ const express = require('express')
 const cors = require('cors')
 const sequelize = require('./db/conn')
 
-// Models
-require('./models/User')
+// Models + Associações
+require('./models')
 
 const app = express()
 
@@ -21,7 +21,9 @@ app.use(express.static('public'))
 
 // Rotas
 const UserRoutes = require('./routes/UserRoutes')
+const PetRoutes  = require('./routes/PetRoutes')
 app.use('/users', UserRoutes)
+app.use('/pets', PetRoutes)
 
 // Teste de conexão + sync
 sequelize.sync().then(() => {
